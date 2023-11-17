@@ -18,7 +18,6 @@ class BasicXMAPITest(test_xla_sharding_base.XlaShardingTest):
 
   @classmethod
   def setUpClass(cls):
-    xr.use_spmd()
     super().setUpClass()
 
   def test_get_xla_supported_devices(self):
@@ -64,7 +63,6 @@ class BasicRuntimeAPITest(test_xla_sharding_base.XlaShardingTest):
 
   @classmethod
   def setUpClass(cls):
-    xr.use_spmd()
     super().setUpClass()
 
   def test_local_process_count(self):
@@ -131,7 +129,6 @@ class BasicAutocastAPITest(test_xla_sharding_base.XlaShardingTest):
 
   @classmethod
   def setUpClass(cls):
-    xr.use_spmd()
     super().setUpClass()
 
   @unittest.skipIf(xr.device_type() not in ['TPU', 'CUDA'],
@@ -150,7 +147,6 @@ class BasicDistributedTest(test_xla_sharding_base.XlaShardingTest):
 
   @classmethod
   def setUpClass(cls):
-    xr.use_spmd()
     return super().setUpClass()
 
   def test_xla_backend(self):
