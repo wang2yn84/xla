@@ -269,7 +269,8 @@ class XLATensor : public torch::lazy::LazyTensor {
   };
 
   // Annotate the IR value with ShardingSpec.
-  void SetShardingSpec(const ShardingSpec& sharding_spec);
+  void SetShardingSpec(const ShardingSpec& sharding_spec,
+                       bool allow_overwrite = false);
   // Clear sharding annotation attached to the IR value and transfer sharded
   // data back to host.
   void ClearShardingSpec();

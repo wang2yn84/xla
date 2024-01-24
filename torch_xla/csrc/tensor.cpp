@@ -247,11 +247,11 @@ torch::lazy::BackendDataPtr XLATensor::GetXlaData() {
   return data()->handle;
 }
 
-void XLATensor::SetShardingSpec(const ShardingSpec& sharding) {
+void XLATensor::SetShardingSpec(const ShardingSpec& sharding, bool allow_overwrite) {
   // Existing annotation must be cleared explicitly. We do not clear and
   // overwrite the existing sharding on the user's behalf. This is a no-op if
   // the same sharding already applied.
-  if (CanApplySharding(sharding_spec())) {
+  if (CanApplySharding(sharding_spec()) || allow_overwrite) {
     TORCH_LAZY_COUNTER("SetShardingSpec", 1);
     data()->sharding = std::make_shared<ShardingSpec>(sharding);
   } else {

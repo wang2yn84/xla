@@ -618,7 +618,10 @@ void ShardingUtil::PrepareOutputShardingPropagation(
   for (int i = 0; i < indices.size(); ++i) {
     auto xtensor = (*tensors)[indices[i]];
     (*sharding_specs)[i] = new_sharding_specs[i];
-    xtensor->SetShardingSpec(*(*sharding_specs)[i]);
+    // Allow overwriting the sharding specs, since output sharding propagation
+    // happens after any resharding that might have already taken place during
+    // auto-sharding pass.
+    xtensor->SetShardingSpec(*(*sharding_specs)[i], /*allow_overwrite=*/true);
 
     // Create sharded data placeholder, this will be used to
     // hold the corresponding computation results for both sharding &
@@ -703,17 +706,15 @@ void ShardingUtil::ReshardParameters(
   }
   XLA_CHECK_EQ(input_shardings.size(), parameters->size());
 
-
   std::vector<xla::OpSharding> output_shardings;
   if (module.has_spmd_output_sharding()) {
     if (module.spmd_output_sharding().tuple_shardings().size() > 0) {
-      auto tuple_shardings =
-          module.spmd_output_sharding().tuple_shardings();
+      auto tuple_shardings = module.spmd_output_sharding().tuple_shardings();
       output_shardings = std::vector<xla::OpSharding>(tuple_shardings.begin(),
                                                       tuple_shardings.end());
     } else {
-      output_shardings = std::vector<xla::OpSharding>{
-          module.spmd_output_sharding()};
+      output_shardings =
+          std::vector<xla::OpSharding>{module.spmd_output_sharding()};
     }
   }
 
