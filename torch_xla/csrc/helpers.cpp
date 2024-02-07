@@ -352,13 +352,15 @@ xla::XlaOp XlaHelpers::DynamicUnboundedReshape(
       [](int64_t size) { return size == xla::Shape::kUnboundedSize; });
   XLA_CHECK(input_shape.is_unbounded_dynamic() ||
             output_sizes_unbounded_dynamic)
-      << "XlaHelpers::DynamicUnboundedReshape constrainled failed!";
+      << "XlaHelpers::DynamicUnboundedReshape constrainled failed! At least "
+      "one of input and output size needs to be unbounded dynamic.";
   if (input_shape.is_unbounded_dynamic() && !output_sizes_unbounded_dynamic) {
     return xla::Reshape(input, output_sizes);
   }
   const xla::Shape& aux_input_shape = ShapeHelper::ShapeOfXlaOp(aux_input);
   XLA_CHECK(output_sizes.size() == aux_input_shape.rank())
-      << "XlaHelpers::DynamicUnboundedReshape constrainled failed!";
+      << "XlaHelpers::DynamicUnboundedReshape constrainled failed! output size"
+      " and aux_input should have same rank.";
 
   std::vector<xla::XlaOp> get_dim_ops;
   std::vector<xla::XlaOp> reshaped_ops;
@@ -843,7 +845,7 @@ xla::XlaOp DynamicBroadcastInDim(xla::XlaOp op, const xla::Shape& final_shape,
 
 xla::XlaOp XlaHelpers::DynamicUnboundedBroadcast(
     xla::XlaOp input, xla::XlaOp aux_input,
-    std::vector<int64_t> aux_input_dimensions) {
+    const std::vector<int64_t>& aux_input_dimensions) {
   XLA_CHECK(XlaHelpers::IsUnboundedDynamismEnabled())
       << "set EXPERIMENTAL_XLA_UNBOUNDED_DYNAMISM=1 to run any unbounded "
          "dynamism workload.";

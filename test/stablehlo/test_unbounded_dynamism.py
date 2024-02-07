@@ -27,6 +27,7 @@ class UnboundedDynamismExportTest(unittest.TestCase):
 
     m = M()
     ep = torch.export.export(m, args=args, constraints=constraints)
+    # ep = torch.export.export(m, args=args)
     return ep
 
   def test_add(self):
@@ -60,7 +61,6 @@ class UnboundedDynamismExportTest(unittest.TestCase):
             r'tensor<f32>.*tensor<\?x197x768xf32>.*->.*tensor<\?x197x768xf32>',
             shlo_text) is not None)
 
-  @unittest.skip("Unbounded Dynamism not supported on addmm.")
   def test_addmm(self):
     args = (torch.rand((5)), torch.rand((10, 5)), torch.rand((5, 5)))
     constraints = [
