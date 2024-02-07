@@ -441,10 +441,11 @@ xla::XlaOp BuildMatMul(xla::XlaOp lhs, xla::XlaOp rhs, xla::XlaOp bias) {
   const xla::Shape& bias_shape = ShapeHelper::ShapeOfXlaOp(bias);
   if (bias_shape.dimensions() != dot_shape.dimensions()) {
     if (dot_shape.is_unbounded_dynamic()) {
-      std::vector<int64_t> aux_input_dimensions(dot_shape.rank() - bias_shape.rank());
+      std::vector<int64_t> aux_input_dimensions(dot_shape.rank() -
+                                                bias_shape.rank());
       std::iota(aux_input_dimensions.begin(), aux_input_dimensions.end(), 0);
       bias = XlaHelpers::DynamicUnboundedBroadcast(bias, dot,
-        aux_input_dimensions);
+                                                   aux_input_dimensions);
     } else {
       bias = BuildExpand(bias, dot_shape.dimensions());
     }

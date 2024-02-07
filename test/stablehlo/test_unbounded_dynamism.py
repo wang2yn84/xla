@@ -225,7 +225,6 @@ class UnboundedDynamismExportTest(unittest.TestCase):
             r"%arg.: tensor<\?x3x224x224xf32>.*->.*tensor<\?x3x224x224xf32>",
             shlo_text) is not None)
 
-  @unittest.skip("Unbounded Dynamism not supported on softmax.")
   def test_softmax(self):
     args = (torch.rand((10, 12, 197, 197)), -1, False)
     constraints = [

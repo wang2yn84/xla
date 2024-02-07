@@ -355,7 +355,8 @@ xla::XlaOp BuildConvolutionOverrideableBias(
           [](int64_t size) { return size == xla::Shape::kUnboundedSize; }) ||
       bias_shape.is_unbounded_dynamic();
 
-  xla::XlaOp broadcasted_bias = bias_broadcast_unbounded_dynamic
+  xla::XlaOp broadcasted_bias =
+      bias_broadcast_unbounded_dynamic
           ? XlaHelpers::DynamicUnboundedBroadcast(bias, conv, conv_dims)
           : xla::Broadcast(bias, broadcast_sizes);
   xla::XlaOp bias_broadcast = xla::Transpose(
