@@ -261,7 +261,7 @@ class XLATensor : public torch::lazy::LazyTensor {
                  const bool& minibatch)
         : sharding(sharding), shape(shape), minibatch(minibatch) {}
 
-    xla::OpSharding sharding;
+    xla::OpSharding sharding = xla::HloSharding::Unknown().ToProto();
     // Optional source tensor shape unpartitioned.
     xla::Shape shape;
     // Parameter for represent input batch in sharded along batch axes
