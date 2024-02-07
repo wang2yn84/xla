@@ -211,7 +211,7 @@ class UnboundedDynamismExportTest(unittest.TestCase):
         re.search(r"%arg.: tensor<\?x197x768xf32>.*->.*tensor<\?x768xf32>",
                   shlo_text) is not None)
 
-  @unittest.skip("Unbounded Dynamism not supported on xla::slice.")
+  @unittest.skip("Need HLO->MHLO converter handle cc to mhlo.real_dynamic_slice")
   def test_slice(self):
     args = (torch.rand((10, 3, 224, 224)), 0, 0, 9223372036854775807)
     constraints = [
