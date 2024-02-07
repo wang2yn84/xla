@@ -196,7 +196,7 @@ class UnboundedDynamismExportTest(unittest.TestCase):
             r"%arg.: tensor<\?x197x12x64xf32>.*->.*tensor<\?x12x197x64xf32>",
             shlo_text) is not None)
 
-  @unittest.skip("Unbounded Dynamism not supported on select..")
+  @unittest.skip("Depends on slice support.")
   def test_select(self):
     args = (torch.rand((10, 197, 768)), 1, 0)
     constraints = [
@@ -206,11 +206,12 @@ class UnboundedDynamismExportTest(unittest.TestCase):
                                             constraints)
     shlo_module = exported_program_to_stablehlo(ep)
     shlo_text = shlo_module.get_stablehlo_text()
+    print(shlo_text)
     self.assertTrue(
         re.search(r"%arg.: tensor<\?x197x768xf32>.*->.*tensor<\?x768xf32>",
                   shlo_text) is not None)
 
-  @unittest.skip("Unbounded Dynamism not supported on slice.")
+  @unittest.skip("Unbounded Dynamism not supported on xla::slice.")
   def test_slice(self):
     args = (torch.rand((10, 3, 224, 224)), 0, 0, 9223372036854775807)
     constraints = [
@@ -220,6 +221,7 @@ class UnboundedDynamismExportTest(unittest.TestCase):
                                             constraints)
     shlo_module = exported_program_to_stablehlo(ep)
     shlo_text = shlo_module.get_stablehlo_text()
+    print(shlo_text)
     self.assertTrue(
         re.search(
             r"%arg.: tensor<\?x3x224x224xf32>.*->.*tensor<\?x3x224x224xf32>",
