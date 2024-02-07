@@ -111,7 +111,6 @@ class UnboundedDynamismExportTest(unittest.TestCase):
             r'%arg.: tensor<\?x196x768xf32>.*%arg.: tensor<\?x1x768xf32>.*->.*tensor<\?x197x768xf32>',
             shlo_text) is not None)
 
-  @unittest.skip("Unbounded Dynamism not supported on conv.")
   def test_conv(self):
     args = (
         torch.rand((10, 3, 224, 224)),
