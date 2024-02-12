@@ -1,6 +1,7 @@
 #include "torch_xla/csrc/xla_graph_executor.h"
 
 #include <Python.h>
+#include <signal.h>
 #include <torch/csrc/autograd/variable.h>
 #include <torch/csrc/lazy/core/hash.h>
 #include <torch/csrc/lazy/core/helpers.h>
@@ -87,8 +88,9 @@ XLAGraphExecutor::ComputationCache* CreateComputationCache() {
     auto serialize_fn =
         [](XLAGraphExecutor::ComputationCache::TypePtr computation)
         -> std::string {
-      return runtime::GetComputationClient()->SerializeComputation(
-          computation->computation);
+      return runtime::GetComputationClient()
+          ->SerializeComputation(  // PIZ: error
+              computation->computation);
     };
     auto deserialize_fn = [](std::string serialization)
         -> XLAGraphExecutor::ComputationCache::TypePtr {
@@ -103,6 +105,7 @@ XLAGraphExecutor::ComputationCache* CreateComputationCache() {
         kMaxCacheSize, persistentCacheDir, readonlyPersistentCache,
         serialize_fn, deserialize_fn);
   }
+  std::cout << "PIZ: return memory cache" << std::endl;
   return new XLAGraphExecutor::MemoryCache(kMaxCacheSize);
 }
 
@@ -544,8 +547,16 @@ XLAGraphExecutor::SyncTensorCollection XLAGraphExecutor::CollectSyncTensors(
   tsl::profiler::TraceMe activity("CollectSyncTensors",
                                   tsl::profiler::TraceMeLevel::kInfo);
   torch::lazy::Unique<torch::lazy::BackendDevice> unique_device;
+  static const std::string fakeDevice =
+      runtime::sys_util::GetEnvString("XLA_COMPILATION_FAKE_DEVICE", "xla");
+  std::shared_ptr<torch::lazy::BackendDeviceType> sptr =
+      std::make_shared<torch::lazy::BackendDeviceType>(
+          torch::lazy::BackendDeviceType((int8_t)at::kXLA));
+  std::cout << "PIZ: set to XLA device" << std::endl;
+  auto bk_device = torch::lazy::BackendDevice(std::move(sptr), 0);
   for (size_t i = 0; i < tensors.size(); ++i) {
-    unique_device.set(tensors[i]->GetDevice());
+    // unique_device.set(tensors[i]->GetDevice());
+    unique_device.set(bk_device);
   }
   SyncTensorCollection coll;
   if (!unique_device) {
@@ -1242,6 +1253,7 @@ XLAGraphExecutor::CompilationResult XLAGraphExecutor::Compile(
   // Annotate HLO sharding selectively in the compuation.
   ShardingUtil::SetHloSharding(&lowering_ctx);
 
+  // raise(SIGTRAP);
   std::vector<std::pair<int64_t, int64_t>> input_output_alias_pair;
   // TODO(yeounoh) aliasing is disabled for partitioned computation,
   // since the current aliasing compares the unpartitioned input and output
@@ -1383,7 +1395,7 @@ XLAGraphExecutor::SyncTensorsGraphInternal(
 
   auto cached_computation = std::make_shared<CachedComputation>(
       std::move(compile_result.computation), compile_result.is_sharded);
-  GetComputationCache()->Add(coll.hash, cached_computation);
+  GetComputationCache()->Add(coll.hash, cached_computation);  // <- PIZ: error
 
   if (warm_up_cache_only) {
     return nullptr;
