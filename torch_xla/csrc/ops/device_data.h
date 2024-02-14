@@ -31,7 +31,7 @@ class DeviceData : public XlaNode {
     XLA_CHECK(data->shape() == data_->shape())
         << "Shape mismatch: expected (" << data_->shape().to_string()
         << "), actual (" << data->shape().to_string() << ")";
-    data_ = data;
+    data_.reset(data.get());
   }
 
   static DeviceData* Cast(const torch::lazy::Node* node);
