@@ -183,6 +183,7 @@ std::vector<int64_t> ParseStringToIntVector(const std::string& str) {
 
 bool ShardingUtil::SetHloSharding(LoweringContext* lowering_ctx) {
   bool is_sharded = false;
+  std::cout << "*** SetHloSharding..." << std::endl;
   for (std::pair<torch::lazy::Output, xla::XlaOp> elem :
        lowering_ctx->GetEmittedOutputs()) {
     const torch::lazy::Node* node = elem.first.node;
@@ -191,10 +192,17 @@ bool ShardingUtil::SetHloSharding(LoweringContext* lowering_ctx) {
         XlaBuilderFriend::GetInstruction(elem.second);
     const std::shared_ptr<xla::OpSharding> sharding =
         xla_node->GetSharding(elem.first.index);
+    if (sharding) {
+      std::cout << "- " << sharding->type() << ", " << sharding->DebugString();
+    } else {
+      std::cout << "- no sharding!";
+    }
     if (sharding != nullptr && sharding->type() != xla::OpSharding::UNKNOWN) {
       *instruction->mutable_sharding() = *sharding;
       is_sharded = true;
+      std::cout << ", attached";
     }
+    std::cout << std::endl;
   }
   return is_sharded;
 }
@@ -701,7 +709,9 @@ void ShardingUtil::ReshardParameters(
     std::vector<const torch::lazy::Node*>* nodes, bool group_sharding) {
   // Extract input shardings generated from auto-sharding pass.
   std::vector<xla::OpSharding> input_shardings;
+  std::cout << "*** ReshardParameters..." << std::endl;
   for (auto sharding : module.spmd_parameters_shardings()) {
+    std::cout << "- " << sharding.type() << ", " << sharding.DebugString() << std::endl;
     input_shardings.push_back(sharding);
   }
   XLA_CHECK_EQ(input_shardings.size(), parameters->size());
