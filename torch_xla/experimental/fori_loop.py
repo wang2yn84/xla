@@ -23,19 +23,34 @@ def _xla_while_loop(cond_fn, body_fn, operands):
 
   def op_fn(internal_x):
     # TODO(manfei): replace cond_fn_placeholder and body_fn_placeholder after confirm xlacomputation could be in xla::while
+    ## print body/cond type
+    print("cond_fn type: ", type(cond_fn))
+    print("body_fn type: ", type(body_fn))
+    print("operands type: ", type(operands))
+
+    ## trans body/cond to xlacomputation
+    xm.mark_step()
+    body_result = body_fn(operands)
+    ctx = torch_xla._XLAC.lowering.LoweringContext()
+    # body_ctx_builder = ctx.builder()
+    # body_ctx_builder.name_ = 'bodyctx'
+    ctx.build([body_result])
+    body_hlo = ctx.hlo()
+    body_computation = xb.computation_from_module_proto("bodycomputation", hlo)
+
     def cond_fn_placeholder(counter, internal_x):
       return counter < xb.Op.scalar(internal_x.builder(), 10, dtype=xb.Type.S32)
 
-    def body_fn_placeholder(counter, internal_x):
-      next_counter = counter + xb.Op.scalar(
-          counter.builder(), 1, dtype=xb.Type.S32)
-      internal_x = internal_x + xb.Op.scalar(
-          internal_x.builder(), 1, dtype=xb.Type.S32)
-      return xb.Op.tuple((next_counter, internal_x))
+    # def body_fn_placeholder(counter, internal_x):
+    #   next_counter = counter + xb.Op.scalar(
+    #       counter.builder(), 1, dtype=xb.Type.S32)
+    #   internal_x = internal_x + xb.Op.scalar(
+    #       internal_x.builder(), 1, dtype=xb.Type.S32)
+    #   return xb.Op.tuple((next_counter, internal_x))
 
     zero = xb.Op.scalar(internal_x.builder(), 0, dtype=xb.Type.S32)
     w = xb.Op.mkwhile((zero, internal_x), cond_fn_placeholder,
-                      body_fn_placeholder)
+                      body_computation)
     return w.get_tuple_element(1)
 
   op = xor.register('test_while', op_fn)
