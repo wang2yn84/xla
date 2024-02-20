@@ -72,6 +72,8 @@ def _xla_while_loop(cond_fn, body_fn, operands):
   # op = xor.register('test_while', op_fn)
   kwargs = {}
   shapes = xb.tensor_shape(operands) # args)
+  print("type shapes: ", type(shapes))
+  print("shapes: ", shapes)
   # with self._lock:
   computation = xb.create_computation('test_while', op_fn, shapes,
                                             **kwargs)
