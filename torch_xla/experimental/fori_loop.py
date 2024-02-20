@@ -21,7 +21,7 @@ def while_loop(cond_fn, body_fn, operands):
 
 def _xla_while_loop(cond_fn, body_fn, operands):
 
-  def op_fn(internal_x):
+  def op_fn(operands):# internal_x):
     # TODO(manfei): replace cond_fn_placeholder and body_fn_placeholder after confirm xlacomputation could be in xla::while
     ## print body/cond type
     print("cond_fn type: ", type(cond_fn))
@@ -31,15 +31,25 @@ def _xla_while_loop(cond_fn, body_fn, operands):
     ## trans body/cond to xlacomputation
     xm.mark_step()
     body_result = body_fn(operands)
-    ctx = torch_xla._XLAC.lowering.LoweringContext()
+    body_ctx = torch_xla._XLAC.lowering.LoweringContext()
     # body_ctx_builder = ctx.builder()
     # body_ctx_builder.name_ = 'bodyctx'
-    ctx.build([body_result])
-    body_hlo = ctx.hlo()
-    body_computation = xb.computation_from_module_proto("bodycomputation", hlo)
+    body_ctx.build([body_result])
+    body_hlo = body_ctx.hlo()
+    body_computation = xb.computation_from_module_proto("bodycomputation", body_hlo)
 
-    def cond_fn_placeholder(counter, internal_x):
-      return counter < xb.Op.scalar(internal_x.builder(), 10, dtype=xb.Type.S32)
+    xm.mark_step()
+    cond_result = cond_fn(operands)
+    cond_ctx = torch_xla._XLAC.lowering.LoweringContext()
+    # body_ctx_builder = ctx.builder()
+    # body_ctx_builder.name_ = 'bodyctx'
+    cond_ctx.build([cond_result])
+    cond_hlo = cond_ctx.hlo()
+    cond_computation = xb.computation_from_module_proto("condcomputation", cond_hlo)
+
+    # def cond_fn_placeholder(counter, operands):
+    #   return counter < xb.Op.scalar((operands[0]).builder(), 10, dtype=xb.Type.S32)
+      # return counter < xb.Op.scalar((internal_x).builder(), 10, dtype=xb.Type.S32)
 
     # def body_fn_placeholder(counter, internal_x):
     #   next_counter = counter + xb.Op.scalar(
@@ -48,10 +58,16 @@ def _xla_while_loop(cond_fn, body_fn, operands):
     #       internal_x.builder(), 1, dtype=xb.Type.S32)
     #   return xb.Op.tuple((next_counter, internal_x))
 
-    zero = xb.Op.scalar(internal_x.builder(), 0, dtype=xb.Type.S32)
-    w = xb.Op.mkwhile((zero, internal_x), cond_fn_placeholder,
-                      body_computation)
+    # zero = xb.Op.scalar(internal_x.builder(), 0, dtype=xb.Type.S32)
+    # w = xb.Op.mkwhile((zero, internal_x), cond_fn_placeholder,
+    #                   body_computation)
+
+    ## trest operands
+    input_tuple = Op.tuple(operands)
+    w = input_tuple.while_loop(
+        condition_computation=cond_computation, body_computation=body_computation)
+
     return w.get_tuple_element(1)
 
   op = xor.register('test_while', op_fn)
-  return xu.as_list(op(operands[0]))
+  return xu.as_list(op(operands))
