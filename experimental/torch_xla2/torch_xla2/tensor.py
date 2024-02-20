@@ -11,6 +11,8 @@ import torch.utils._python_dispatch as torch_dispatch
 import torch.utils._pytree as torch_pytree
 import torch.utils.dlpack as torchdl
 
+DEBUG = False
+
 
 class XLADispatchMode(torch_dispatch.TorchDispatchMode):
 
@@ -62,6 +64,7 @@ def t2j(t):
   except Exception:
     # https://github.com/google/jax/issues/7657
     # https://github.com/google/jax/issues/17784
+    t = t.cpu()
     if t.dtype == torch.bfloat16:
       nparray = (t.detach().to(torch.float32).numpy()
                 )  # numpy don't support bfloat16
@@ -70,6 +73,9 @@ def t2j(t):
     res = jnp.asarray(nparray)
     if t.dtype == torch.bfloat16:
       res = res.astype(jnp.bfloat16)
+
+    device = jax.devices()[0]
+    res = jax.device_put(res, device)
 
   if t.dtype == torch.bool:
     res = res.astype(jnp.bool_)
@@ -175,12 +181,13 @@ class XLATensor2(torch.Tensor):
 
   @classmethod
   def __torch_dispatch__(cls, func, types, args=(), kwargs=None):
-    print("running...", func.name(), types)
-    for a in torch_pytree.tree_flatten(args)[0]:
-      if isinstance(a, XLATensor2):
-        print("  ", a._elem.shape)
-      else:
-        print("  ", a)
+    if DEBUG:
+      print("running...", func.name(), types)
+      for a in torch_pytree.tree_flatten(args)[0]:
+        if isinstance(a, XLATensor2):
+          print("  ", a._elem.shape)
+        else:
+          print("  ", a)
     lowering = ops_registry.lowerings.lookup(func)
 
     if lowering is None:
@@ -188,11 +195,12 @@ class XLATensor2(torch.Tensor):
 
     with XLADispatchMode():
       res = lowering(*args, **kwargs)
-    print("output:")
-    for a in torch_pytree.tree_flatten(res)[0]:
-      if isinstance(a, XLATensor2):
-        print("  ", a._elem.shape)
-    debug_accuracy(func, args, kwargs, res)
+    if DEBUG:
+      print("output:")
+      for a in torch_pytree.tree_flatten(res)[0]:
+        if isinstance(a, XLATensor2):
+          print("  ", a._elem.shape)
+      debug_accuracy(func, args, kwargs, res)
     return res
 
   def detach(self):

@@ -67,7 +67,7 @@ def _aten_add(x, y):
 
 @op(torch.ops.aten.add_, is_jax_func=False)
 def _aten_add_inplace(self, other, *, alpha):
-  if isinstance(other, XLATensor2):
+  if isinstance(other, torch.XLATensor2):
     self._elem += alpha * other._elem
   else:
     self._elem += alpha * other
@@ -76,10 +76,8 @@ def _aten_add_inplace(self, other, *, alpha):
 
 @op(torch.ops.aten.copy_, is_jax_func=False)
 def _aten_copy(x, y, memory_format=None):
-  if isinstance(x, XLATensor2):
+  if isinstance(x, tensor.XLATensor2):
     x._elem = y._elem
-  elif isinstance(x, SliceView):
-    x.mutate(y)
   return x
 
 
@@ -162,6 +160,7 @@ def _aten_silu(x):
 
 
 @op(torch.ops.aten.t)
+@op(torch.ops.aten.t_copy)
 def _aten_t(x):
   return jnp.transpose(x)
 
@@ -484,9 +483,6 @@ def _aten_convolution(
     output_padding,
     groups,
 ):
-  if transposed:
-    raise NotImplementedError("Transposed convolution is not implemented.")
-
   def make_padding(padding):
     return ((p, p) for p in padding)
 
@@ -505,7 +501,17 @@ def _aten_convolution(
     return jax.lax.ConvDimensionNumbers(
         *map(tuple, (lhs_spec, rhs_spec, out_spec)))
 
-  res = jax.lax.conv_general_dilated(
+  if transposed:
+    res = jax.lax.conv_transpose(
+        input, 
+        weight, 
+        stride, 
+        make_padding(padding),
+        rhs_dilation=dilation, 
+        dimension_numbers=create_default_conv_dimension_numbers(len(stride)),
+    )
+  else:
+    res = jax.lax.conv_general_dilated(
       input,
       weight,
       stride,
@@ -515,7 +521,7 @@ def _aten_convolution(
       dimension_numbers=create_default_conv_dimension_numbers(len(stride)),
       feature_group_count=groups,
       batch_group_count=1,
-  )
+    )
 
   if bias is not None:
     # TODO(qihqi): bias always on channel?
@@ -534,7 +540,6 @@ def _aten__native_batch_norm_legit(input, weight, bias, running_mean,
   return _aten__native_batch_norm_legit_no_training(input, weight, bias,
                                                     running_mean, running_var,
                                                     momentum, eps)
-
 
 @op(torch.ops.aten._native_batch_norm_legit_no_training)
 def _aten__native_batch_norm_legit_no_training(input, weight, bias,
@@ -556,6 +561,10 @@ def _aten__native_batch_norm_legit_no_training(input, weight, bias,
       jnp.array([]),
   )
 
+@op(torch.ops.aten.relu_, is_jax_func=False)
+def _aten_relu_(self):
+  self._elem = _aten_relu(self._elem)
+  return self
 
 @op(torch.ops.aten.relu)
 def _aten_relu(self):
@@ -1124,6 +1133,8 @@ def _aten_avg_pool(inputs,
                    count_include_pad=True,
                    divisor_override=None):
 
+  if strides is None:
+    strides = kernel_size
   num_batch_dims = len(inputs.shape) - len(kernel_size) - 1
   kernel_size = tuple(kernel_size)
   strides = tuple(strides)

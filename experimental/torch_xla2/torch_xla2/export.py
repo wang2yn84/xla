@@ -8,6 +8,8 @@ from torch.fx import _pytree as fx_pytree
 from torch_xla2 import ops_registry, tensor
 from torch.utils import _pytree as pytree
 
+from torch._functorch.aot_autograd import aot_export_module
+
 
 class JaxProgram:
 
@@ -172,10 +174,14 @@ class JaxInterpreter(torch.fx.Interpreter):
     return res
 
 
-from torch._decomp import get_decompositions
+from torch._decomp import get_decompositions, core_aten_decompositions
 import torch._refs
 
-_extra_decomp = get_decompositions([torch.ops.aten.unfold])
+_extra_decomp = get_decompositions([
+  torch.ops.aten.unfold, 
+  torch.ops.aten._native_batch_norm_legit_functional.default,
+  torch.ops.aten._native_batch_norm_legit.no_stats,
+])
 
 
 def _extract_states_from_exported_program(exported_model):
@@ -229,3 +235,48 @@ def exported_program_to_jax(exported_program):
 
   states = pytree.tree_map_only(torch.Tensor, tensor.t2j, states)
   return states, func
+
+
+from torch.func import functionalize
+from functorch import make_fx
+
+def dynamo(fx, example_inputs):
+  decomp = core_aten_decompositions()
+  decomp.update(_extra_decomp)
+  fx = make_fx(functionalize(fx, remove='mutations_and_views'))(*example_inputs)
+
+  gm, graph_signature = aot_export_module(
+    fx, example_inputs, 
+    decompositions=decomp, trace_joint=False)
+  # func is a jax function
+  def func(inputs):
+    res = JaxInterpreter(gm).run(
+      *inputs,
+      enable_io_processing=False,
+    )
+    return res
+
+  func = jax.jit(func)
+
+  def unwrap(arg):
+    if isinstance(arg, tensor.XLATensor2):
+      return arg._elem
+    if isinstance(arg, torch.Tensor):
+      return tensor.t2j(arg)
+    return arg
+
+
+  def to_return(*args):
+    import pdb; pdb.set_trace()
+    args = pytree.tree_map(unwrap, args)
+    res = func(args)
+    return tensor.wrap(res)
+  
+  return to_return
+
+from torch._dynamo.backends.common import aot_autograd
+dynamo = aot_autograd(fw_compiler=dynamo)
+    
+
+
+
