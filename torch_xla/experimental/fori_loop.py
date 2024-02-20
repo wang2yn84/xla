@@ -72,8 +72,8 @@ def _xla_while_loop(cond_fn, body_fn, operands):
   # op = xor.register('test_while', op_fn)
   kwargs = {}
   shapes = xb.tensor_shape(operands) # args)
-  with self._lock:
-    computation = xb.create_computation('test_while', op_fn, shapes,
+  # with self._lock:
+  computation = xb.create_computation('test_while', op_fn, shapes,
                                             **kwargs)
   result = torch_xla._XLAC._xla_user_computation('xla::_op_test_while', operands,
                                                    computation)
