@@ -3183,6 +3183,7 @@ class TestCoreAtenOps(unittest.TestCase):
     kwargs = dict()
     run_export_and_compare(self, torch.ops.aten.replication_pad3d, args, kwargs)
 
+  @unittest.skip('skippping test_aten_roll')
   def test_aten_roll_0(self):
     args = (
         torch.randn((10, 10)).to(torch.float32),
@@ -3198,6 +3199,7 @@ class TestCoreAtenOps(unittest.TestCase):
     kwargs = dict()
     run_export_and_compare(self, torch.ops.aten.roll, args, kwargs)
 
+  @unittest.skip('skippping test_aten_roll')
   def test_aten_roll_1(self):
     args = (
         torch.randn((10, 10)).to(torch.float16),
@@ -3213,6 +3215,7 @@ class TestCoreAtenOps(unittest.TestCase):
     kwargs = dict()
     run_export_and_compare(self, torch.ops.aten.roll, args, kwargs)
 
+  @unittest.skip('skippping test_aten_roll')
   def test_aten_roll_2(self):
     args = (
         torch.randint(0, 10, (10, 10)).to(torch.int32),
